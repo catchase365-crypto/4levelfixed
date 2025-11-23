@@ -1,0 +1,648 @@
+<!-- START OF FILE: 4x4_Master_Cube.html -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>四阶·花蓉锁</title>
+    <style>
+        body {
+            margin: 0; overflow: hidden; background-color: #050505;
+            font-family: "Microsoft YaHei", sans-serif; user-select: none;
+        }
+        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; z-index: 10; }
+        h1 { 
+            margin: 0; color: #d4af37; letter-spacing: 4px; font-size: 28px; font-weight: bold;
+            text-shadow: 0 2px 15px rgba(212, 175, 55, 0.5);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3); padding-bottom: 5px;
+        }
+        p { font-size: 12px; color: #886b4b; margin: 5px 0 10px 0; letter-spacing: 1px; }
+
+        /* 计时器样式 */
+        #timer-display {
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 10; 
+            pointer-events: none;
+            color: #d4af37;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 8px 12px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 8px;
+            background: rgba(15, 15, 15, 0.6);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .color-legend { display: flex; gap: 5px; margin-top: 8px; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid #444; }
+
+        .controls {
+            position: absolute; bottom: 40px; width: 100%;
+            display: flex; justify-content: center; gap: 25px;
+            pointer-events: auto; z-index: 20;
+        }
+        button {
+            background: rgba(15, 15, 15, 0.9); backdrop-filter: blur(10px);
+            border: 1px solid #5c4033; color: #d4af37;
+            padding: 12px 32px; font-size: 14px; border-radius: 25px; 
+            cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); outline: none; font-weight: bold;
+        }
+        button:hover { background: #2e2018; border-color: #ffd700; color: #fff; transform: translateY(-2px); }
+        button:active { transform: scale(0.96); }
+        
+        #victory-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: none; opacity: 0; transition: opacity 0.5s ease; z-index: 50;
+            background: rgba(0,0,0,0.9);
+        }
+        #victory-overlay.show { opacity: 1; pointer-events: auto; }
+        .win-text {
+            font-size: 60px; font-weight: 300; color: #d4af37; font-family: serif;
+            text-shadow: 0 0 40px rgba(212, 175, 55, 0.6); letter-spacing: 10px;
+            border-top: 1px solid #d4af37; border-bottom: 1px solid #d4af37; 
+            padding: 30px 0; margin-bottom: 30px;
+        }
+
+        #sound-menu {
+            position: absolute; bottom: 100px; left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: rgba(20, 12, 8, 0.98);
+            border: 1px solid #5c4033; padding: 15px; border-radius: 12px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: auto; width: 340px; z-index: 30;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.9); transform-origin: bottom center;
+        }
+        #sound-menu.open { transform: translateX(-50%) scale(1); }
+        .sound-item {
+            background: #1a100b; padding: 10px 5px; border-radius: 6px;
+            text-align: center; color: #aa8866; font-size: 12px;
+            cursor: pointer; border: 1px solid transparent; transition: 0.2s;
+        }
+        .sound-item.active { background: #5c4033; color: #fff; border-color: #d4af37; }
+        /* 调整图标样式 */
+        .flower-icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+
+    <div id="ui">
+        <h1>四阶·花蓉锁</h1>
+        <p>Inner Core Locked</p>
+        <p style="margin: 0; font-size: 12px; color: #d4af37; letter-spacing: 1px;">Made by Catchase</p>
+    </div>
+    
+    <div id="timer-display">00:00</div>
+
+    <div id="victory-overlay">
+        <div class="win-text">大道至简</div>
+        <div style="display:flex; gap:20px;">
+            <button onclick="event.stopPropagation(); game.reset()">归位</button>
+            <button onclick="event.stopPropagation(); game.shuffle()">再破一阵</button>
+        </div>
+    </div>
+
+    <div id="sound-menu">
+        <div class="sound-item active" onclick="audioMgr.set('wood')">🪵 沉香</div>
+        <div class="sound-item" onclick="audioMgr.set('glass')">🍷 琉璃</div>
+        <div class="sound-item" onclick="audioMgr.set('mute')">🔇 静音</div>
+    </div>
+
+    <div class="controls">
+        <button onclick="event.stopPropagation(); toggleMenu()">
+            <svg width="20" height="20" viewBox="0 0 100 100" class="flower-icon">
+                <!-- 定义六种颜色的渐变作为花瓣的填充 -->
+                <defs>
+                    <linearGradient id="c1_4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#b90000"/><stop offset="100%" stop-color="#ff5900"/></linearGradient>
+                    <linearGradient id="c2_4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd700"/><stop offset="100%" stop-color="#e6e6e6"/></linearGradient>
+                    <linearGradient id="c3_4" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#009e60"/><stop offset="100%" stop-color="#0045ad"/></linearGradient>
+                </defs>
+                <g transform="translate(50, 50)" stroke="#ffe082" stroke-width="4">
+                    <!-- 6 个花瓣 (使用颜色渐变) -->
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c1_4)" transform="rotate(0)"/>
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c2_4)" transform="rotate(60)"/>
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c3_4)" transform="rotate(120)"/>
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c1_4)" transform="rotate(180)"/>
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c2_4)" transform="rotate(240)"/>
+                    <path d="M-8 0 Q-5 -30 8 0 L-8 0 Z" fill="url(#c3_4)" transform="rotate(300)"/>
+                </g>
+                <!-- 花蕊 -->
+                <circle cx="50" cy="50" r="10" fill="#d4af37"/>
+            </svg>
+            听觉
+        </button>
+        <button onclick="event.stopPropagation(); game.shuffle()">🔀 乱阵</button>
+    </div>
+
+<script>
+/* 1. 音频引擎 */
+class SoundEngine {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.type = 'wood'; 
+    }
+    init() { if(this.ctx.state==='suspended') this.ctx.resume(); }
+    
+    set(key) { 
+        this.type=key; 
+        this.init(); 
+        if (key !== 'mute') {
+            this.play();
+        }
+        document.getElementById('sound-menu').classList.remove('open'); 
+    }
+    
+    play() {
+        if(this.type==='mute') return;
+        this.init(); 
+        const t=this.ctx.currentTime;
+        const osc=this.ctx.createOscillator(); 
+        const g=this.ctx.createGain();
+        osc.connect(g); g.connect(this.ctx.destination);
+        
+        if(this.type==='wood') {
+            // 沉香音效 (四阶略微更低沉)
+            osc.type='sine'; osc.frequency.setValueAtTime(80,t); osc.frequency.exponentialRampToValueAtTime(30,t+0.18);
+            g.gain.setValueAtTime(0.8,t); g.gain.exponentialRampToValueAtTime(0.01,t+0.2);
+            osc.start(t); osc.stop(t+0.2);
+        } else if (this.type==='glass') {
+            // 琉璃音效：清脆高频
+            osc.type='sine'; 
+            osc.frequency.setValueAtTime(500,t); 
+            osc.frequency.exponentialRampToValueAtTime(1200,t+0.1); 
+            g.gain.setValueAtTime(0.3,t); 
+            g.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+            osc.start(t); osc.stop(t+0.15);
+        }
+    }
+    playWin() {
+        if(this.type==='mute')return; this.init(); const t=this.ctx.currentTime;
+        [196,261,329,392,523].forEach((f,i)=>{
+            const o=this.ctx.createOscillator();const g=this.ctx.createGain();o.connect(g).connect(this.ctx.destination);
+            o.type='sine'; o.frequency.value=f; g.gain.setValueAtTime(0,t+i*0.2);g.gain.linearRampToValueAtTime(0.2,t+i*0.2+0.1);g.gain.exponentialRampToValueAtTime(0.001,t+i*0.2+3);
+            o.start(t+i*0.2);o.stop(t+i*0.2+3.5);
+        });
+    }
+}
+const audioMgr = new SoundEngine();
+
+/* 2. 纹理工厂 (统一为花蓉纹理) */
+const TextureFactory = {
+    cache: {},
+    createWood(colorHex, isInner=false) {
+        const k = colorHex + (isInner?'_in':'_out');
+        if(this.cache[k]) return this.cache[k];
+        
+        const size = 512; const canvas = document.createElement('canvas'); canvas.width=size; canvas.height=size;
+        const ctx = canvas.getContext('2d');
+        const col = new THREE.Color(colorHex);
+        
+        // 纯净底色和木纹 (保持不变)
+        if(isInner) ctx.fillStyle = '#3a322e'; 
+        else ctx.fillStyle = `rgb(${col.r*180}, ${col.g*180}, ${col.b*180})`;
+        ctx.fillRect(0,0,size,size);
+        
+        ctx.globalAlpha = 0.12; ctx.globalCompositeOperation = 'multiply';
+        for(let i=0;i<8000;i++) {
+            ctx.fillStyle = Math.random()>0.5?'#000':'#4e342e';
+            ctx.fillRect(Math.random()*size,Math.random()*size,Math.random()*60+20,2);
+        }
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1.0;
+
+        if(!isInner) {
+            // 光影 (保持不变)
+            const grad = ctx.createRadialGradient(size/2,size/2,size*0.3,size/2,size/2,size*0.9);
+            grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.5)');
+            ctx.fillStyle = grad; ctx.fillRect(0,0,size,size);
+            
+            // 【移除金边】已确认移除
+            
+            // 【纹理重制】绘制不对称、底部生长的花蓉纹样
+            const m = size / 2; // 中心点
+            // 【修复：调整根部Y坐标，使其整体居中】
+            const rootY = m + 20; // 根部位置（略微偏下，但整体中心向上）
+            
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'rgba(255, 215, 0, 0.7)'; // 柔和的金色光晕
+            ctx.lineWidth = 1;
+            ctx.lineCap = 'round';
+
+            const totalPetals = 8;
+            const baseColor = new THREE.Color(colorHex);
+            
+            for (let i = 0; i < totalPetals; i++) {
+                // 角度和长度变化实现不对称
+                const angle = (i * 2 * Math.PI) / totalPetals + (i * 0.05);
+                const maxReach = 80 + (i % 3) * 10; 
+                const controlOffset = 50; 
+                
+                // 花瓣尖点 (向上方发展)
+                const tipX = m + maxReach * Math.cos(angle);
+                const tipY = rootY - maxReach * Math.sin(angle) * 1.5; 
+
+                // 创建独特的线性渐变 (从根部到花瓣尖，实现颜色渐变)
+                const petalGradient = ctx.createLinearGradient(m, rootY, tipX, tipY);
+                
+                // FIX: Convert THREE.Color object's RGB values to CSS string for addColorStop
+                const baseRgb = `rgb(${Math.round(baseColor.r * 255)}, ${Math.round(baseColor.g * 255)}, ${Math.round(baseColor.b * 255)})`;
+                const darkRgb = `rgb(${Math.round(baseColor.r * 255 * 0.7)}, ${Math.round(baseColor.g * 255 * 0.7)}, ${Math.round(baseColor.b * 255 * 0.7)})`;
+
+                // 渐变色：从主色（深）到主色（亮）到白色高光
+                petalGradient.addColorStop(0, darkRgb); // 根部深色
+                petalGradient.addColorStop(0.6, baseRgb); // 主色
+                petalGradient.addColorStop(1, '#FFFFFF'); // 尖端高光
+
+                ctx.beginPath();
+                // 根部起始点
+                ctx.moveTo(m, rootY); 
+                
+                // 左侧弧线
+                ctx.quadraticCurveTo(
+                    m + controlOffset * Math.cos(angle - 0.6), rootY + controlOffset * Math.sin(angle - 0.6), 
+                    tipX, tipY
+                );
+                
+                // 右侧弧线
+                ctx.quadraticCurveTo(
+                    m + controlOffset * Math.cos(angle + 0.6), rootY + controlOffset * Math.sin(angle + 0.6), 
+                    m, rootY
+                );
+                
+                ctx.fillStyle = petalGradient;
+                ctx.fill();
+                
+                // 添加描边
+                ctx.strokeStyle = '#FFD700'; 
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 绘制花蕊/根部遮盖 (确保根部在最下方，整体视觉效果向上)
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            // 【修复：调整花蕊/根部遮盖位置】
+            ctx.arc(m, rootY, 20, 0, Math.PI * 2); 
+            ctx.fillStyle = '#A07000'; // 深金色/棕色，作为花托
+            ctx.fill();
+            
+        } else {
+             // 内部面暗角
+             const grad = ctx.createRadialGradient(size/2,size/2,size*0.2,size/2,size/2,size*0.9);
+             grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,'rgba(0,0,0,0.9)');
+             ctx.fillStyle = grad; ctx.fillRect(0,0,size,size);
+        }
+
+        const tex = new THREE.CanvasTexture(canvas); tex.anisotropy=8;
+        this.cache[k] = tex; return tex;
+    },
+    // 创建核心纹理
+    createObsidian() {
+        if(this.cache['obs']) return this.cache['obs'];
+        const size = 512; const canvas = document.createElement('canvas'); canvas.width=size; canvas.height=size;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#000000'; ctx.fillRect(0,0,size,size);
+        // 熔岩金裂纹
+        ctx.strokeStyle = '#ffaa00'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.shadowBlur=10; ctx.shadowColor='#ffaa00';
+        ctx.beginPath();
+        ctx.moveTo(100,100); ctx.bezierCurveTo(200,150,300,50,400,100);
+        ctx.moveTo(50,400); ctx.bezierCurveTo(150,300,350,450,450,350);
+        ctx.stroke();
+        
+        // 符文
+        ctx.strokeStyle = 'rgba(255,215,0,0.5)'; ctx.lineWidth=2; ctx.shadowBlur=0;
+        ctx.strokeRect(150,150,212,212);
+        ctx.beginPath(); ctx.arc(256,256,60,0,Math.PI*2); ctx.stroke();
+
+        const tex = new THREE.CanvasTexture(canvas);
+        this.cache['obs'] = tex; return tex;
+    }
+};
+
+/* 3. 游戏核心 */
+class CoreGame {
+    constructor() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x050505);
+
+        // 计时器属性
+        this.isTiming = false;
+        this.startTime = 0;
+        this.elapsedTime = 0;
+        this.timerDisplay = document.getElementById('timer-display');
+        
+        // 相机拉远一点，因为4x4体积大
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+        this.camera.position.set(8, 7, 9); 
+        
+        // 高性能渲染
+        this.renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, powerPreference:"high-performance"});
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.3; // 稍微调亮
+        document.body.appendChild(this.renderer.domElement);
+
+        // 灯光 (统一为高亮恒定配置)
+        this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const spot = new THREE.SpotLight(0xffeeb1, 3.5); 
+        spot.position.set(10, 15, 10); spot.castShadow = true;
+        spot.shadow.mapSize.width = 2048; spot.shadow.mapSize.height = 2048;
+        this.scene.add(spot);
+        const blueRim = new THREE.PointLight(0x4466ff, 1.0); 
+        blueRim.position.set(-8, 0, -8); this.scene.add(blueRim);
+
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+
+        this.blocks = [];
+        this.gap = new THREE.Vector3();
+        this.animating = false;
+        
+        // 用于处理点击和拖动的区分
+        this.isDragging = false;
+        this.startMouse = new THREE.Vector2();
+        
+        this.initMaterials();
+        this.initLevel();
+        
+        this.raycaster = new THREE.Raycaster();
+        this.mouse = new THREE.Vector2();
+        
+        this.setupEvents(); 
+        this.updateTimerDisplay(0);
+
+        window.addEventListener('resize', ()=>{
+            this.camera.aspect = window.innerWidth/window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        this.animate();
+    }
+    
+    // 格式化时间函数
+    updateTimerDisplay(timeInSeconds) {
+        const minutes = Math.floor(timeInSeconds / 60);
+        const seconds = Math.floor(timeInSeconds % 60);
+        const m = String(minutes).padStart(2, '0');
+        const s = String(seconds).padStart(2, '0');
+        this.timerDisplay.textContent = `${m}:${s}`;
+    }
+
+    // 设置鼠标事件来区分点击和拖动
+    setupEvents() {
+        window.addEventListener('pointerdown', (e) => {
+            this.isDragging = false;
+            if (e.button === 0 || e.pointerType === 'touch') {
+                this.startMouse.set(e.clientX, e.clientY);
+            }
+        });
+        
+        window.addEventListener('pointermove', (e) => {
+            if (!this.startMouse.x) return;
+            const dist = Math.hypot(e.clientX - this.startMouse.x, e.clientY - this.startMouse.y);
+            if(dist > 5) this.isDragging = true;
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (this.isDragging || e.target.closest('button') || e.target.closest('#sound-menu')) {
+                this.isDragging = false;
+                return;
+            }
+            this.onClick(e);
+        });
+    }
+
+
+    initMaterials() {
+        // 内侧颜色 IN:0x3a322e (已提亮)
+        const colors = { U:0xe6e6e6, D:0xffd700, R:0xb90000, L:0xff5900, F:0x009e60, B:0x0045ad, IN:0x3a322e }; 
+        this.mats = {};
+        // 外层材质
+        for(let k in colors) {
+            const isInner = k==='IN';
+            const t = TextureFactory.createWood(colors[k], isInner);
+            this.mats[k] = new THREE.MeshStandardMaterial({
+                map:t, roughness: isInner?0.9:0.2, metalness: isInner?0.0:0.2,
+                bumpMap:t, bumpScale:0.01
+            });
+        }
+        // 内层镇物材质 (黑金)
+        const obs = TextureFactory.createObsidian();
+        this.coreMat = new THREE.MeshStandardMaterial({
+            map: obs, color: 0xffffff,
+            roughness: 0.8, metalness: 0.5, 
+            bumpMap: obs, bumpScale: 0.05
+        });
+    }
+
+    initLevel() {
+        // 清理
+        this.blocks.forEach(b => this.scene.remove(b.mesh));
+        this.blocks = []; // 存放可移动方块
+        if(this.fixedGroup) this.scene.remove(this.fixedGroup);
+        this.fixedGroup = new THREE.Group(); // 存放不可移动的内核
+        this.scene.add(this.fixedGroup);
+
+        const geo = new THREE.RoundedBoxGeometry(0.94, 0.94, 0.94, 4, 0.1);
+        
+        // 4x4x4 循环：坐标从 0 到 3
+        // 为了居中，我们需要偏移：0->-1.5, 1->-0.5, 2->0.5, 3->1.5
+        const offset = 1.5;
+
+        for(let z=0; z<4; z++) {
+            for(let y=0; y<4; y++) {
+                for(let x=0; x<4; x++) {
+                    // 物理坐标
+                    const px = x - offset;
+                    const py = y - offset;
+                    const pz = z - offset;
+
+                    // 1. 判断是否是核心 (中间 2x2x2)
+                    // 索引 1 和 2 是中间
+                    const isInner = (x>=1 && x<=2) && (y>=1 && y<=2) && (z>=1 && z<=2);
+
+                    if (isInner) {
+                        // 创建【镇物】(Fixed Core)
+                        const mesh = new THREE.Mesh(geo, this.coreMat);
+                        mesh.position.set(px, py, pz);
+                        mesh.castShadow = true; mesh.receiveShadow = true;
+                        // 稍微缩小一点点，增加层次感
+                        mesh.scale.set(0.98, 0.98, 0.98);
+                        this.fixedGroup.add(mesh);
+                        // 核心不加入 this.blocks，所以不可点击
+                    } else {
+                        // 2. 判断是否是缺口
+                        // 我们设定 (3,3,3) 为初始缺口
+                        if (x===3 && y===3 && z===3) {
+                            this.gap.set(px, py, pz);
+                            continue;
+                        }
+
+                        // 3. 创建可移动方块 (Shell)
+                        // 确定颜色: 面向外部的用彩色，面向内部的用深色
+                        const mats = [
+                            x===3 ? this.mats.R : this.mats.IN, // Right
+                            x===0 ? this.mats.L : this.mats.IN, // Left
+                            y===3 ? this.mats.U : this.mats.IN, // Up
+                            y===0 ? this.mats.D : this.mats.IN, // Down
+                            z===3 ? this.mats.F : this.mats.IN, // Front
+                            z===0 ? this.mats.B : this.mats.IN  // Back
+                        ];
+                        
+                        const mesh = new THREE.Mesh(geo, mats);
+                        mesh.position.set(px, py, pz);
+                        mesh.castShadow = true; mesh.receiveShadow = true;
+                        this.scene.add(mesh);
+                        
+                        this.blocks.push({
+                            mesh: mesh,
+                            solved: new THREE.Vector3(px, py, pz) // 记录正确位置
+                        });
+                    }
+                }
+            }
+        }
+        
+        // 给核心加一个微弱的内发光，增加神秘感
+        const coreLight = new THREE.PointLight(0xffaa00, 1, 5);
+        coreLight.position.set(0,0,0);
+        this.scene.add(coreLight);
+    }
+
+    onClick(e) {
+        if(document.getElementById('victory-overlay').classList.contains('show')) return;
+        if(this.animating) return;
+
+        this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+
+        // 只能点到 movable blocks，点不到 fixedGroup
+        const intersects = this.raycaster.intersectObjects(this.blocks.map(b=>b.mesh));
+
+        if(intersects.length > 0) {
+            const blk = this.blocks.find(b => b.mesh === intersects[0].object);
+            if(blk) this.move(blk);
+        }
+    }
+
+    move(blk) {
+        // 检查距离：曼哈顿距离是否为 1 (即相邻)
+        const dist = blk.mesh.position.distanceTo(this.gap);
+        
+        // 允许误差 0.1
+        if(dist > 0.9 && dist < 1.1) {
+            // 【计时逻辑】如果计时未开始，则开始计时
+            if (!this.isTiming) {
+                this.isTiming = true;
+                this.startTime = Date.now();
+            }
+
+            // 成功移动
+            audioMgr.play(); // 播放当前选中的音效
+            this.animating = true;
+            
+            const targetPos = this.gap.clone();
+            this.gap.copy(blk.mesh.position); // 更新缺口位置
+            
+            new TWEEN.Tween(blk.mesh.position).to(targetPos, 120)
+                .easing(TWEEN.Easing.Quadratic.Out)
+                .onComplete(() => {
+                    this.animating = false;
+                    this.checkWin();
+                }).start();
+        } else {
+            // 无效移动，完全静音
+        }
+    }
+
+    reset() {
+        TWEEN.removeAll();
+        this.animating = false;
+        document.getElementById('victory-overlay').classList.remove('show');
+        this.initLevel();
+        // 【计时逻辑】重置计时器
+        this.isTiming = false;
+        this.startTime = 0;
+        this.elapsedTime = 0;
+        this.updateTimerDisplay(0);
+    }
+
+    shuffle() {
+        this.reset();
+        // 随机游走打乱：保证有解
+        let steps = 80; // 步数要多一点，因为4x4
+        const run = () => {
+            if(steps <= 0) return;
+            
+            // 找到所有与 Gap 相邻的方块
+            const neighbors = this.blocks.filter(b => b.mesh.position.distanceTo(this.gap) < 1.1);
+            if(neighbors.length > 0) {
+                const r = neighbors[Math.floor(Math.random() * neighbors.length)];
+                // 瞬移交换
+                const temp = this.gap.clone();
+                this.gap.copy(r.mesh.position);
+                r.mesh.position.copy(temp);
+            }
+            steps--;
+            setTimeout(run, 10); // 快速打乱
+        };
+        run();
+    }
+
+    checkWin() {
+        if(this.animating) return;
+        let win = true;
+        for(let b of this.blocks) {
+            if(b.mesh.position.distanceTo(b.solved) > 0.05) {
+                win = false; break;
+            }
+        }
+        if(win) {
+            document.getElementById('victory-overlay').classList.add('show');
+            audioMgr.playWin();
+            // 【计时逻辑】解谜成功，停止计时
+            this.isTiming = false;
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        TWEEN.update();
+
+        // 【计时逻辑修复】只有在isTiming为true时才累积时间
+        if (this.isTiming) {
+            this.elapsedTime = (Date.now() - this.startTime) / 1000;
+            this.updateTimerDisplay(this.elapsedTime);
+        }
+
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+function toggleMenu() { document.getElementById('sound-menu').classList.toggle('open'); }
+
+const game = new CoreGame();
+</script>
+</body>
+</html>
